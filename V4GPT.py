@@ -16,8 +16,8 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
 COLLEGE_NAME = os.getenv("COLLEGE_NAME", "Карагандинский колледж технологий и сервиса")
-SCHEDULE_URL = os.getenv("SCHEDULE_URL", "https://docs.google.com/spreadsheets/...")
-SITE_URL = os.getenv("SITE_URL", "https://kktis.kz")
+SCHEDULE_URL = os.getenv("SCHEDULE_URL")
+SITE_URL = os.getenv("SITE_URL")
 
 # --- Логирование ---
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +37,7 @@ COLLEGE_RULES = (
     "Отвечай дружелюбно, кратко и информативно."
 )
 
-# --- Главное меню ---
+# --- Клавиатура ---
 def get_main_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -56,12 +56,12 @@ async def generate_reply(prompt: str) -> str:
         headers = {
             "Authorization": f"Bearer {OPENROUTER_KEY}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://t.me/your_bot_username",  # ⚠️ Замени на @username твоего бота
+            "HTTP-Referer": "https://t.me/kollegekktis_bot",  # ✅ ссылка на твоего бота
             "X-Title": "KKTiS College Bot"
         }
 
         data = {
-            "model": "deepseek/deepseek-chat-v3-0324:free",  # ✅ бесплатная и стабильная модель
+            "model": "deepseek/deepseek-chat-v3-0324:free",  # стабильная бесплатная модель на OpenRouter
             "messages": [
                 {"role": "system", "content": COLLEGE_RULES},
                 {"role": "user", "content": prompt},
@@ -75,9 +75,13 @@ async def generate_reply(prompt: str) -> str:
             timeout=60
         )
 
+        # 🔍 Отладочный вывод
+        print("STATUS:", response.status_code)
+        print("BODY:", response.text)
+
         if response.status_code != 200:
-            logger.error(f"❌ Ошибка OpenRouter ({response.status_code}): {response.text}")
-            return "⚠️ Ошибка при обращении к OpenRouter API. Проверь ключ или попробуй позже."
+            logger.error(f"❌ Ошибка OpenRouter: {response.status_code} - {response.text}")
+            return f"⚠️ Ошибка при обращении к OpenRouter API:\n\n{response.text}"
 
         rj = response.json()
         return rj["choices"][0]["message"]["content"].strip()
@@ -86,7 +90,7 @@ async def generate_reply(prompt: str) -> str:
         return "⏳ Сервер OpenRouter не ответил вовремя. Попробуй позже."
     except Exception as e:
         logger.error(f"❌ Ошибка при работе с OpenRouter: {e}")
-        return "😔 Не удалось получить ответ от модели. Попробуй позже."
+        return f"😔 Не удалось получить ответ от модели.\n\nОшибка: {e}"
 
 # --- Команда /start ---
 @dp.message(CommandStart())
@@ -98,32 +102,27 @@ async def cmd_start(message: Message):
     )
     await message.answer(welcome_text, reply_markup=get_main_keyboard())
 
-# --- Раздел «Расписание» ---
+# --- Кнопки ---
 @dp.message(F.text == "📅 Расписание")
 async def show_schedule(message: Message):
     await message.answer(
-        f"📅 <b>Расписание занятий:</b>\n\n"
-        f"🔗 <a href='{SCHEDULE_URL}'>Открыть расписание</a>\n\n"
-        f"🌐 {SITE_URL}",
+        f"📅 <b>Расписание занятий:</b>\n\n🔗 <a href='{SCHEDULE_URL}'>Открыть расписание</a>\n\n🌐 {SITE_URL}",
+        parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
 
-# --- Раздел «Контакты» ---
 @dp.message(F.text == "📞 Контакты")
 async def show_contacts(message: Message):
     await message.answer(
-        "📞 <b>Контакты:</b>\n"
-        "📍 Караганда, ул. Затаевича, 75\n"
-        "☎️ 8-7212-37-58-44\n"
-        "✉️ krg-koll-7092@bilim09.kzu.kz",
+        "📞 <b>Контакты:</b>\nКараганда, ул. Затаевича, 75\n☎️ 8-7212-37-58-44\n✉️ krg-koll-7092@bilim09.kzu.kz",
+        parse_mode=ParseMode.HTML
     )
 
-# --- Раздел «Приёмная комиссия» ---
 @dp.message(F.text == "🎓 Приёмная комиссия")
 async def show_admission(message: Message):
     await message.answer(
-        "🎓 <b>Приёмная комиссия</b>\n\n"
-        "Список специальностей и документы для поступления доступны на сайте колледжа.",
+        "🎓 <b>Приёмная комиссия</b>\n\nСписок специальностей и документы для поступления доступны на сайте колледжа.",
+        parse_mode=ParseMode.HTML
     )
 
 # --- Чат-режим ---
@@ -133,7 +132,7 @@ async def chat(message: Message):
     reply = await generate_reply(prompt)
     await message.answer(reply)
 
-# --- Запуск бота ---
+# --- Основной запуск ---
 async def main():
     logger.info("✅ Бот запущен и готов к работе через OpenRouter!")
     await dp.start_polling(bot)
