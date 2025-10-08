@@ -1,0 +1,1 @@
+worker: python V4GPT.py
