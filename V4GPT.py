@@ -56,12 +56,12 @@ async def generate_reply(prompt: str) -> str:
         headers = {
             "Authorization": f"Bearer {OPENROUTER_KEY}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://t.me/kollegekktis_bot",  # ✅ ссылка на твоего бота
+            "HTTP-Referer": "https://t.me/kollegekktis_bot",  # ✅ Твой бот
             "X-Title": "KKTiS College Bot"
         }
 
         data = {
-            "model": "deepseek/deepseek-chat-v3-0324:free",  # стабильная бесплатная модель на OpenRouter
+            "model": "deepseek/deepseek-chat-v3-0324:free",  # ✅ стабильная бесплатная модель
             "messages": [
                 {"role": "system", "content": COLLEGE_RULES},
                 {"role": "user", "content": prompt},
@@ -75,13 +75,12 @@ async def generate_reply(prompt: str) -> str:
             timeout=60
         )
 
-        # 🔍 Отладочный вывод
+        # 🔍 Диагностика
         print("STATUS:", response.status_code)
         print("BODY:", response.text)
 
         if response.status_code != 200:
-            logger.error(f"❌ Ошибка OpenRouter: {response.status_code} - {response.text}")
-            return f"⚠️ Ошибка при обращении к OpenRouter API:\n\n{response.text}"
+            return f"⚠️ Ошибка OpenRouter ({response.status_code}):\n\n{response.text}"
 
         rj = response.json()
         return rj["choices"][0]["message"]["content"].strip()
