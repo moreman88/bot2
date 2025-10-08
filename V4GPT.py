@@ -2,6 +2,8 @@ import os
 import logging
 import asyncio
 import requests
+import google.generativeai as genai
+from openai import OpenAI
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
@@ -15,6 +17,8 @@ load_dotenv()
 # --- Настройки ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 COLLEGE_NAME = os.getenv("COLLEGE_NAME", "Карагандинский колледж технологий и сервиса")
 SCHEDULE_URL = os.getenv("SCHEDULE_URL")
 SITE_URL = os.getenv("SITE_URL")
@@ -48,20 +52,20 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
         input_field_placeholder="Выберите раздел..."
     )
 
-# --- Генерация ответа через OpenRouter ---
+# --- Генерация ответа через OpenRouter с автоматическим fallback ---
 async def generate_reply(prompt: str) -> str:
+    # 1️⃣ Попытка — OpenRouter
     try:
-        logger.info("🧠 Отправка запроса в OpenRouter...")
+        logger.info("🧠 Попытка: OpenRouter (deepseek-chat-v3-0324:free)")
 
         headers = {
             "Authorization": f"Bearer {OPENROUTER_KEY}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://t.me/kollegekktis_bot",  # ✅ Твой бот
             "X-Title": "KKTiS College Bot"
         }
 
         data = {
-            "model": "deepseek/deepseek-chat-v3-0324:free",  # ✅ стабильная бесплатная модель
+            "model": "deepseek/deepseek-chat-v3-0324:free",
             "messages": [
                 {"role": "system", "content": COLLEGE_RULES},
                 {"role": "user", "content": prompt},
@@ -75,21 +79,50 @@ async def generate_reply(prompt: str) -> str:
             timeout=60
         )
 
-        # 🔍 Диагностика
         print("STATUS:", response.status_code)
         print("BODY:", response.text)
 
-        if response.status_code != 200:
-            return f"⚠️ Ошибка OpenRouter ({response.status_code}):\n\n{response.text}"
+        if response.status_code == 200:
+            rj = response.json()
+            logger.info("✅ Используется OpenRouter (deepseek-chat)")
+            return rj["choices"][0]["message"]["content"].strip()
+        else:
+            raise Exception(response.text)
 
-        rj = response.json()
-        return rj["choices"][0]["message"]["content"].strip()
+    except Exception as e1:
+        logger.warning(f"⚠️ OpenRouter недоступен: {e1}")
 
-    except requests.exceptions.Timeout:
-        return "⏳ Сервер OpenRouter не ответил вовремя. Попробуй позже."
-    except Exception as e:
-        logger.error(f"❌ Ошибка при работе с OpenRouter: {e}")
-        return f"😔 Не удалось получить ответ от модели.\n\nОшибка: {e}"
+    # 2️⃣ Попытка — OpenAI
+    try:
+        if OPENAI_API_KEY:
+            logger.info("🔄 Переключение на OpenAI (gpt-4o-mini)...")
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": COLLEGE_RULES},
+                    {"role": "user", "content": prompt}
+                ],
+            )
+            logger.info("✅ Используется OpenAI (gpt-4o-mini)")
+            return response.choices[0].message.content.strip()
+    except Exception as e2:
+        logger.warning(f"⚠️ Ошибка OpenAI: {e2}")
+
+    # 3️⃣ Попытка — Gemini
+    try:
+        if GEMINI_API_KEY:
+            logger.info("🔄 Переключение на Gemini (1.5-flash)...")
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            reply = model.generate_content(f"{COLLEGE_RULES}\n\nПользователь: {prompt}")
+            logger.info("✅ Используется Gemini (1.5-flash)")
+            return reply.text.strip()
+    except Exception as e3:
+        logger.error(f"❌ Все модели недоступны: {e3}")
+
+    # 4️⃣ Ничего не сработало
+    return "😔 Все модели сейчас недоступны. Попробуй позже."
 
 # --- Команда /start ---
 @dp.message(CommandStart())
@@ -133,7 +166,7 @@ async def chat(message: Message):
 
 # --- Основной запуск ---
 async def main():
-    logger.info("✅ Бот запущен и готов к работе через OpenRouter!")
+    logger.info("✅ Бот запущен и готов к работе (OpenRouter + резерв OpenAI/Gemini)")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
