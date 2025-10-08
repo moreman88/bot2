@@ -12,7 +12,7 @@ from aiogram.client.default import DefaultBotProperties
 
 # 🔧 --- НАСТРОЙКИ ---
 BOT_TOKEN = "8407576281:AAF0lofeJQxBxsxEoYrMimB4ACAtVVyHN9w"
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = "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"
 GEMINI_API_KEY = "AIzaSyBSeT4fCI0wphjsujGkfFJ9VkexhUiKveE"
 OPENROUTER_KEY = "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"
 
@@ -124,3 +124,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
