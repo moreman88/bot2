@@ -2,8 +2,6 @@ import os
 import logging
 import asyncio
 import requests
-import google.generativeai as genai
-from openai import OpenAI
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
@@ -16,10 +14,7 @@ load_dotenv()
 
 # --- Настройки ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
-
 COLLEGE_NAME = os.getenv("COLLEGE_NAME", "Карагандинский колледж технологий и сервиса")
 SCHEDULE_URL = os.getenv("SCHEDULE_URL")
 SITE_URL = os.getenv("SITE_URL")
@@ -31,9 +26,6 @@ logger = logging.getLogger(__name__)
 # --- Инициализация бота ---
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
-
-# --- Инициализация OpenAI клиента ---
-client = OpenAI(api_key=OPENAI_API_KEY)
 
 # --- Системная инструкция для ИИ ---
 COLLEGE_RULES = (
@@ -56,56 +48,42 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
         input_field_placeholder="Выберите раздел..."
     )
 
-# --- Основная функция генерации ответов ---
+# --- Функция генерации ответов через OpenRouter ---
 async def generate_reply(prompt: str) -> str:
     try:
-        logger.info("🧠 Используется OpenAI (GPT-4o-mini)")
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
+        logger.info("🧠 Отправка запроса в OpenRouter...")
+
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_KEY}",
+            "Content-Type": "application/json",
+        }
+        data = {
+            "model": "gpt-4o-mini",  # Можно заменить на другую модель (например, "mistralai/mixtral-8x7b")
+            "messages": [
                 {"role": "system", "content": COLLEGE_RULES},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ],
+        }
+
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=60
         )
-        return response.choices[0].message.content.strip()
 
+        if response.status_code != 200:
+            logger.error(f"❌ Ошибка OpenRouter: {response.status_code} - {response.text}")
+            return "⚠️ Ошибка при обращении к OpenRouter API. Проверь ключ или попробуй позже."
+
+        rj = response.json()
+        return rj["choices"][0]["message"]["content"].strip()
+
+    except requests.exceptions.Timeout:
+        return "⏳ Сервер OpenRouter не ответил вовремя. Попробуй позже."
     except Exception as e:
-        err = str(e)
-        logger.warning(f"⚠️ Ошибка OpenAI: {err}")
-
-        if "insufficient_quota" in err or "429" in err:
-            # Переключаемся на Gemini
-            try:
-                logger.info("🔄 Переключение на Gemini...")
-                genai.configure(api_key=GEMINI_API_KEY)
-                model = genai.GenerativeModel("gemini-1.5-flash")
-                reply = model.generate_content(f"{COLLEGE_RULES}\n\nПользователь: {prompt}")
-                return reply.text.strip()
-            except Exception as e2:
-                logger.warning(f"⚠️ Ошибка Gemini: {e2}")
-
-                # Пробуем OpenRouter
-                try:
-                    logger.info("🔄 Переключение на OpenRouter...")
-                    headers = {
-                        "Authorization": f"Bearer {OPENROUTER_KEY}",
-                        "Content-Type": "application/json",
-                    }
-                    data = {
-                        "model": "gpt-4o-mini",
-                        "messages": [
-                            {"role": "system", "content": COLLEGE_RULES},
-                            {"role": "user", "content": prompt}
-                        ],
-                    }
-                    resp = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data, timeout=60)
-                    rj = resp.json()
-                    return rj["choices"][0]["message"]["content"].strip()
-                except Exception as e3:
-                    logger.error(f"❌ Все провайдеры недоступны: {e3}")
-                    return "😔 Все модели сейчас недоступны. Попробуй позже."
-        else:
-            return f"⚠️ Ошибка: {err}"
+        logger.error(f"❌ Ошибка при работе с OpenRouter: {e}")
+        return "😔 Не удалось получить ответ от модели. Попробуй позже."
 
 # --- Команда /start ---
 @dp.message(CommandStart())
@@ -149,7 +127,7 @@ async def chat(message: Message):
 
 # --- Основной запуск ---
 async def main():
-    logger.info("✅ Бот запущен и готов к работе!")
+    logger.info("✅ Бот запущен и готов к работе через OpenRouter!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
