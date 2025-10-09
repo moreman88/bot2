@@ -116,7 +116,6 @@ async def show_contacts(message: Message):
         parse_mode=ParseMode.HTML
     )
 
-```python
 @dp.message(F.text == "🎓 Приёмная комиссия")
 async def show_admission(message: Message):
     """
@@ -182,8 +181,6 @@ async def show_admission(message: Message):
     )
 
     await message.answer(admission_text, parse_mode=ParseMode.HTML)
-```
-
 
 # --- Новая кнопка: Расписание звонков ---
 @dp.message(F.text == "⏰ Расписание звонков")
@@ -224,5 +221,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
