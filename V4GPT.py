@@ -1,3 +1,4 @@
+```python
 import os
 import logging
 import asyncio
@@ -42,7 +43,7 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📅 Расписание"), KeyboardButton(text="🎓 Приёмная комиссия")],
-            [KeyboardButton(text="📞 Контакты")],
+            [KeyboardButton(text="📞 Контакты"), KeyboardButton(text="⏰ Расписание звонков")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выберите раздел..."
@@ -123,6 +124,31 @@ async def show_admission(message: Message):
         parse_mode=ParseMode.HTML
     )
 
+# --- Новая кнопка: Расписание звонков ---
+@dp.message(F.text == "⏰ Расписание звонков")
+async def show_bell_schedule(message: Message):
+    text = (
+        "<b>⏰ Расписание звонков</b>\n\n"
+        "<b>Понедельник:</b>\n"
+        "1 пара — 09:00 – 09:45\n"
+        "Перемена — 5 мин\n"
+        "09:50 – 11:20\n\n"
+        "Обед (1-й поток) — 20 мин\n"
+        "2 пара — 11:40 – 13:10\n\n"
+        "Обед (2-й поток) — 20 мин\n"
+        "3 пара — 13:30 – 15:00\n\n"
+        "——————————————\n"
+        "<b>Вторник – Пятница:</b>\n"
+        "1 пара — 09:00 – 10:30\n"
+        "Перемена — 10 мин\n"
+        "2 пара — 10:40 – 12:10\n\n"
+        "Обед (1-й поток) — 20 мин\n"
+        "3 пара — 12:30 – 14:00\n\n"
+        "Обед (2-й поток) — 20 мин\n"
+        "4 пара — 14:20 – 15:50"
+    )
+    await message.answer(text, parse_mode=ParseMode.HTML)
+
 # --- Чат-режим ---
 @dp.message()
 async def chat(message: Message):
@@ -137,3 +163,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
