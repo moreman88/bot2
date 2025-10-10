@@ -86,7 +86,7 @@ async def generate_reply(prompt: str, lang="ru") -> str:
         system_msg = COLLEGE_RULES_RU if lang == "ru" else COLLEGE_RULES_KZ
 
         data = {
-            "model": "deepseek/deepseek-chat-v3-0324:free",
+            "model": "mistralai/mistral-7b-instruct:free",
             "messages": [
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt},
@@ -293,3 +293,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
