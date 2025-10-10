@@ -16,7 +16,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
 
-COLLEGE_NAME_RU = os.getenv("COLLEGE_NAME_RU", "Карагандинский колледж технологий и сервиса")
+COLLEGE_NAME_RU = os.getenv("COLLEGE_NAME_RU", "Карагандинский колледж технологии и сервиса")
 COLLEGE_NAME_KK = os.getenv("COLLEGE_NAME_KK", "«Қарағанды технология және сервис колледжі»")
 
 SCHEDULE_URL = os.getenv("SCHEDULE_URL", "https://kkts.edu.kz/raspisanie")
@@ -257,3 +257,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
